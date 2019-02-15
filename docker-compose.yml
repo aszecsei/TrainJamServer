@@ -1,0 +1,32 @@
+version: "3"
+services:
+  icecast:
+    image: moul/icecast
+    volumes:
+      - ./logs:/var/log/icecast2
+    environment:
+      - ICECAST_SOURCE_PASSWORD=temp
+      - ICECAST_ADMIN_PASSWORD=temp
+      - ICECAST_PASSWORD=trainjam
+      - ICECAST_RELAY_PASSWORD=trainjam
+    ports:
+      - "8000:8000"
+  virtualdj:
+    build: ./virtualdj
+    volumes:
+      - ./virtualdj:/usr/src/app
+      - /usr/app/node_modules
+    ports:
+      - "8080:8080"
+    depends_on:
+      - redis_db
+    environment:
+      - REDIS_URL=redis://redis_db:6379
+  redis_db:
+    image: "redis:alpine"
+    volumes:
+      - redis_data:/var/lib/redis
+    expose:
+      - 6379
+volumes:
+  redis_data:
