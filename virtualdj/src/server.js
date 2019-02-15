@@ -57,12 +57,13 @@ server.route({
       title: songTitle,
       artist: songArtist,
     }
-    let songs = await getAsync('songs')
+    await setAsync('id', JSON.stringify(data))
+    let songs = getAsync('songs')
     if (!songs) {
-      songs = {}
+      songs = []
     }
-    songs[id] = data
-    await setAsync('songs', songs)
+    songs.push(id)
+    await setAsync('songs')
     return data
   },
   config: {
