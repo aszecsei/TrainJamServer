@@ -7,9 +7,9 @@ import HapiSwagger from 'hapi-swagger'
 import Joi from 'joi'
 import Boom from 'boom'
 import uuid from 'uuid'
+import mongoose from 'mongoose'
 
-import redis from 'redis'
-import { promisify } from 'util'
+import Song, { JoiSongSchema } from './models/song'
 
 const paths = {
   song_directory: '/home/user/music/',
@@ -31,40 +31,36 @@ const swaggerOptions = {
 server.route({
   method: 'GET',
   path: '/songs',
-  handler: async function(request, h) {
-    let res = await getAsync('songs')
-    if (!res) {
-      res = {}
-    }
-    return res
+  handler: async (request, h) => {
+    return (await Song.find()).map(x => x.present())
   },
   options: {
     description: 'Get a list of all songs in the database',
     tags: ['api'],
+    response: {
+      schema: Joi.array().items(JoiSongSchema),
+    },
   },
 })
 
 server.route({
   method: 'POST',
   path: '/song',
-  handler: async function(request, h) {
+  handler: async (request, h) => {
     // TODO: Validation of file type, etc
     // TODO: Deal with the song file upload
-    const { songTitle, songArtist } = request
+    const { songTitle, songArtist } = request.payload
+    console.log(`Title: ${songTitle}\nArtist: ${songArtist}`)
     const id = uuid.v1()
-    let data = {
-      id,
-      title: songTitle,
+    const newSong = new Song({
+      _id: id,
+      name: songTitle,
       artist: songArtist,
-    }
-    await setAsync('id', JSON.stringify(data))
-    let songs = getAsync('songs')
-    if (!songs) {
-      songs = []
-    }
-    songs.push(id)
-    await setAsync('songs')
-    return data
+      filePath: '',
+      numberOfPlays: 0,
+    })
+    await newSong.save()
+    return newSong.present()
   },
   config: {
     plugins: {
@@ -92,6 +88,9 @@ server.route({
       output: 'file',
       allow: 'multipart/form-data',
     },
+    response: {
+      schema: JoiSongSchema,
+    },
   },
 })
 
@@ -113,15 +112,11 @@ const start = async function() {
   console.log('Server running at:', server.info.uri)
 }
 
-const client = redis.createClient(process.env.REDIS_URL)
-const getAsync = promisify(client.get).bind(client)
-const setAsync = promisify(client.set).bind(client)
-
-client.on('connect', function() {
-  console.log('Redis client connected')
-  start()
+const url = 'mongodb://mongo_db/virtualdj'
+mongoose.connect(url, {
+  useNewUrlParser: true,
 })
-
-client.on('error', function(err) {
-  console.error('Something went wrong ' + err)
+mongoose.connection.once('open', () => {
+  console.log('connected to database')
+  start()
 })

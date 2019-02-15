@@ -18,15 +18,11 @@ services:
       - /usr/app/node_modules
     ports:
       - "8080:8080"
-    depends_on:
-      - redis_db
-    environment:
-      - REDIS_URL=redis://redis_db:6379
-  redis_db:
-    image: "redis:alpine"
+    links:
+      - mongo_db
+  mongo_db:
+    image: "mongo"
     volumes:
-      - redis_data:/var/lib/redis
+      - ./mongo_data:/data/db
     expose:
-      - 6379
-volumes:
-  redis_data:
+      - 27017
